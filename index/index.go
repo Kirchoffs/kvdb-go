@@ -1,0 +1,23 @@
+package index
+
+import (
+    "bytes"
+    "kvdb-go/data"
+
+    "github.com/google/btree"
+)
+
+type Indexer interface {
+    Put(key []byte, pos *data.LogRecordPos) bool
+    Get(key []byte) *data.LogRecordPos
+    Delete(key []byte) bool
+}
+
+type Item struct {
+    key []byte
+    pos *data.LogRecordPos
+}
+
+func (x *Item) Less(y btree.Item) bool {
+    return bytes.Compare(x.key, y.(*Item).key) == -1
+}
