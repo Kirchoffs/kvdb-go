@@ -197,3 +197,42 @@ func (x *Item) Less(y btree.Item) bool {
 }
 ```
 Because `Item` does not implement `btree.Item`, so `Item` cannot be regarded as `btree.Item`. Only `*Item` implements the `btree.Item`.
+
+### Package strconv
+```
+import "strconv"
+
+func main() {
+    i, err := strconv.Atoi("-42")
+    s := strconv.Itoa(-42)
+    fmt.Println(i, s)   // -42 -42
+}
+```
+
+### Blank Identifier
+```
+package main
+
+import "fmt"
+
+func main() {
+    x := []int{1, 2, 3}
+    y := []int{1, 2, 3}
+
+    for _, ex := range x {
+        for _, ey := range y {
+            fmt.Println(ex, ey)
+        }
+    }
+}
+```
+
+### Enum
+```
+type IndexType = int8
+
+const (
+    BTreeIndex IndexType = iota + 1
+    ARTIndex
+)
+```

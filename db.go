@@ -1,17 +1,52 @@
 package kvdb_go
 
 import (
+	"io"
 	"kvdb-go/data"
 	"kvdb-go/index"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 )
 
 type DB struct {
     options *Options
     mutex *sync.RWMutex
+    fileIds []uint32
     activeFile *data.DataFile
     olderFiles map[uint32]*data.DataFile
     index index.Indexer
+}
+
+func Open(options *Options) (*DB, error) {
+    if err := checkOptions(*options); err != nil {
+        return nil, err
+    }
+
+    if _, err := os.Stat(options.DirPath); os.IsNotExist(err) {
+        if err := os.MkdirAll(options.DirPath, 0755); err != nil {
+            return nil, err
+        }
+    }
+
+    db := &DB {
+        options: options,
+        mutex: new(sync.RWMutex),
+        olderFiles: make(map[uint32]*data.DataFile),
+        index: index.NewIndexer(options.IndexType),
+    }
+
+    if err := db.loadDataFiles(); err != nil {
+        return nil, err
+    }
+
+    if err := db.loadIndexFromDataFiles(); err != nil {
+        return nil, err
+    }
+
+    return db, nil
 }
 
 func (db *DB) Put(key []byte, value []byte) error {
@@ -49,17 +84,17 @@ func (db *DB) Get(key []byte) ([]byte, error) {
     }
 
     var dataFile *data.DataFile
-    if db.activeFile.FileId == logRecordPos.Fid {
+    if db.activeFile.FileId == logRecordPos.FileId {
         dataFile = db.activeFile
     } else {
-        dataFile = db.olderFiles[logRecordPos.Fid]
+        dataFile = db.olderFiles[logRecordPos.FileId]
     }
 
     if dataFile == nil {
         return nil, ErrDataFileNotFound
     }
 
-    logRecord, err := dataFile.ReadLogRecord(logRecordPos.Offset)
+    logRecord, _, err := dataFile.ReadLogRecord(logRecordPos.Offset)
     if err != nil {
         return nil, nil
     }
@@ -69,6 +104,29 @@ func (db *DB) Get(key []byte) ([]byte, error) {
     }
 
     return logRecord.Value, nil
+}
+
+func (db *DB) Delete(key []byte) error {
+    if len(key) == 0 {
+        return ErrKeyIsEmpty
+    }
+
+    if pos := db.index.Get(key); pos == nil {
+        return nil
+    }
+
+    logRecord := &data.LogRecord {Key: key, Type: data.LogRecordDeleted}
+    _, err := db.appendLogRecord(logRecord)
+    if err != nil {
+        return err
+    }
+
+    ok := db.index.Delete(key)
+    if !ok {
+        return ErrIndexUpdateFailed
+    }
+
+    return nil
 }
 
 func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
@@ -106,7 +164,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
     }
 
     pos := &data.LogRecordPos {
-        Fid: db.activeFile.FileId,
+        FileId: db.activeFile.FileId,
         Offset: writeOffset,
     }
 
@@ -126,5 +184,105 @@ func (db *DB) setActiveDataFile() error {
     }
 
     db.activeFile = dataFile
+    return nil
+}
+
+func (db *DB) loadDataFiles() error {
+    dirEntries, err := os.ReadDir(db.options.DirPath)
+    if err != nil {
+        return err
+    }
+
+    var fileIds []uint32
+    for _, entry := range dirEntries {
+        if strings.HasSuffix(entry.Name(), data.DataFileSuffix) {
+            splitNames := strings.Split(entry.Name(), ".")
+            fileId, err := strconv.Atoi(splitNames[0])
+            if err != nil {
+                return ErrDataDirectoryCorrupted
+            }
+            fileIds = append(fileIds, uint32(fileId))
+        }
+    }
+
+    sort.Slice(fileIds, func(i int, j int) bool {
+        return fileIds[i] < fileIds[j]
+    })
+    db.fileIds = fileIds
+
+    for i, fileId := range fileIds {
+        dataFile, err := data.OpenDataFile(db.options.DirPath, fileId)
+        if err != nil {
+            return err
+        }
+
+        if i == len(fileIds) - 1 {
+            db.activeFile = dataFile
+        } else {
+            db.olderFiles[fileId] = dataFile
+        }
+    }
+    
+    return nil
+}
+
+func (db *DB) loadIndexFromDataFiles() error {
+    if len(db.fileIds) == 0 {
+        return nil
+    }
+
+    for _, fileId := range db.fileIds {
+        var dataFile *data.DataFile
+        if fileId == db.activeFile.FileId {
+            dataFile = db.activeFile
+        } else {
+            dataFile = db.olderFiles[fileId]
+        }
+
+        var offset int64 = 0
+        for {
+            logRecord, readLength, err := dataFile.ReadLogRecord(offset)
+            if err != nil {
+                if err == io.EOF {
+                    break
+                } else {
+                    return err
+                }
+            }
+
+            logRecordPos := &data.LogRecordPos {
+                FileId: fileId,
+                Offset: offset,
+            }
+            var ok bool
+            if logRecord.Type == data.LogRecordDeleted {
+                ok = db.index.Delete(logRecord.Key)
+            } else {
+                ok = db.index.Put(logRecord.Key, logRecordPos)
+            }
+            if !ok {
+                return ErrIndexUpdateFailed
+            }
+
+            offset += readLength
+        }
+
+        if fileId == db.activeFile.FileId {
+            db.activeFile.WriteOffset = offset
+        }
+    }
+
+    return nil
+}
+
+func checkOptions(options Options) error {
+    if options.DirPath == "" {
+        return ErrDataDirectoryEmpty
+    }
+
+    if options.DataFileSize <= 0 {
+        return ErrDataFileSizeInvalid
+    }
+
     return nil
 }

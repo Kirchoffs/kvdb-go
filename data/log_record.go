@@ -14,7 +14,7 @@ type LogRecord struct {
 }
 
 type LogRecordPos struct {
-    Fid    uint32
+    FileId uint32
     Offset int64
 }
 
