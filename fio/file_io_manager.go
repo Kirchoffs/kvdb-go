@@ -29,3 +29,11 @@ func (fio *FileIOManager) Sync() error {
 func (fio *FileIOManager) Close() error {
     return fio.fd.Close()
 }
+
+func (fio *FileIOManager) Size() (int64, error) {
+    stat, err := fio.fd.Stat()
+    if err != nil {
+        return 0, err
+    }
+    return stat.Size(), nil
+}

@@ -7,6 +7,14 @@
 >> go get github.com/stretchr/testify
 ```
 
+## Test
+```
+>> go test ./...
+>> go test ./... -v
+>> go test -timeout 30s -run ^TestOpenDataFile$ kvdb-go/data
+>> go test -timeout 30s -run ^TestOpenDataFile$ kvdb-go/data -v
+```
+
 ## Project Notes
 ### index/index.go
 ```
