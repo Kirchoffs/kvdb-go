@@ -8,11 +8,24 @@
 ```
 
 ## Test
+Run tests:
 ```
 >> go test ./...
 >> go test ./... -v
 >> go test -timeout 30s -run ^TestOpenDataFile$ kvdb-go/data
 >> go test -timeout 30s -run ^TestOpenDataFile$ kvdb-go/data -v
+```
+
+Run examples:
+```
+>> cd examples
+>> go run basic_operations.go
+```
+
+## Tools
+### View raw binary data
+```
+>> hexdump -C <filename>
 ```
 
 ## Project Notes
@@ -34,6 +47,23 @@ type Item interface {
     Less(than Item) bool
 }
 ```
+
+### FileIOManager
+FileIOManager is a struct that manages the file IO operations. It is used to read and write data to the file. It does not know the data format.
+
+DataFile will use FileIOManager to read and write data.
+
+### DataFile
+```
+type DataFile struct {
+    FileId uint32
+    WriteOffset int64
+    IOManager fio.IOManager
+}
+```
+
+### Data
+For this DB, key cannot be empty, value can be empty.
 
 ## Golang Notes
 ### RWMutex
@@ -207,6 +237,8 @@ func (x *Item) Less(y btree.Item) bool {
 Because `Item` does not implement `btree.Item`, so `Item` cannot be regarded as `btree.Item`. Only `*Item` implements the `btree.Item`.
 
 ### Package strconv
+Package strconv package provides functions for converting strings to other types and vice versa. The name "strconv" stands for "string conversion."
+
 ```
 import "strconv"
 
@@ -244,3 +276,12 @@ const (
     ARTIndex
 )
 ```
+BTreeIndex is 1, ARTIndex is 2.
+
+```
+const (
+    LogRecordNormal LogRecordType = iota
+    LogRecordDeleted LogRecordType = iota
+)
+```
+LogRecordNormal is 0, LogRecordDeleted is 1.

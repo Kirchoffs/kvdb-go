@@ -29,7 +29,7 @@ func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) bool {
 
 func (bt *BTree) Get(key []byte) *data.LogRecordPos {
     itemKey := &Item{key: key}
-	
+    
     item := bt.tree.Get(itemKey)
 
     if item == nil {

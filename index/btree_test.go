@@ -7,7 +7,7 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-func Test_BTree_Put(t *testing.T) {
+func TestBTreePut(t *testing.T) {
     bt := NewBTree()
     
     res1 := bt.Put(nil, &data.LogRecordPos{FileId: 1, Offset: 1})
@@ -17,7 +17,7 @@ func Test_BTree_Put(t *testing.T) {
     assert.True(t, res2)
 }
 
-func Test_BTree_Get(t *testing.T) {
+func TestBTreeGet(t *testing.T) {
     bt := NewBTree()
     
     res1 := bt.Put(nil, &data.LogRecordPos{FileId: 1, Offset: 1})
@@ -35,7 +35,7 @@ func Test_BTree_Get(t *testing.T) {
     assert.Equal(t, int64(3), pos3.Offset)
 }
 
-func Test_BTree_Delete(t *testing.T) {
+func TestBTreeDelete(t *testing.T) {
     bt := NewBTree()
 
     res1 := bt.Put(nil, &data.LogRecordPos{FileId: 1, Offset: 1})

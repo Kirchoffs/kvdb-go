@@ -1,11 +1,11 @@
 package fio
 
 import (
-	"os"
-	"path/filepath"
-	"testing"
+    "os"
+    "path/filepath"
+    "testing"
 
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 )
 
 func destroyFile(name string) {

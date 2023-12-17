@@ -1,18 +1,18 @@
 package kvdb_go
 
 import (
-	"io"
-	"kvdb-go/data"
-	"kvdb-go/index"
-	"os"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
+    "io"
+    "kvdb-go/data"
+    "kvdb-go/index"
+    "os"
+    "sort"
+    "strconv"
+    "strings"
+    "sync"
 )
 
 type DB struct {
-    options *Options
+    options Options
     mutex *sync.RWMutex
     fileIds []uint32
     activeFile *data.DataFile
@@ -20,8 +20,8 @@ type DB struct {
     index index.Indexer
 }
 
-func Open(options *Options) (*DB, error) {
-    if err := checkOptions(*options); err != nil {
+func Open(options Options) (*DB, error) {
+    if err := checkOptions(options); err != nil {
         return nil, err
     }
 
@@ -47,6 +47,10 @@ func Open(options *Options) (*DB, error) {
     }
 
     return db, nil
+}
+
+func (db *DB) Close() error {
+    return nil
 }
 
 func (db *DB) Put(key []byte, value []byte) error {
@@ -157,7 +161,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
         return nil, err
     }
 
-    if db.options.SyncWrite {
+    if db.options.SyncWrites {
         if err := db.activeFile.Sync(); err != nil {
             return nil, err
         }

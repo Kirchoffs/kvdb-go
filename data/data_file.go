@@ -1,16 +1,22 @@
 package data
 
 import (
-	"errors"
-	"fmt"
-	"hash/crc32"
-	"io"
-	"kvdb-go/fio"
-	"path/filepath"
+    "errors"
+    "fmt"
+    "hash/crc32"
+    "io"
+    "kvdb-go/fio"
+    "path/filepath"
+    log "github.com/sirupsen/logrus"
 )
 
 var (
     ErrInvalidCRC = errors.New("invalid crc value, log record may be corrupted")
+    ErrDataFileCorrupted = errors.New("data file is corrupted")
+)
+
+const (
+    LogRecordEntryFormatString = "offset: %d, crc: %d, header.crc: %d, header.recordType: %d, header.keySize: %d, header.valueSize: %d, key: %s, value: %s"
 )
 
 const DataFileSuffix = ".data"
@@ -37,13 +43,19 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
     if err != nil {
         return nil, 0, err
     }
-
-    var headerBytes int64 = maxLogRecordHeaderSize
-    if offset + headerBytes > fileSize {
-        headerBytes = fileSize - offset
+    if offset == fileSize {
+        return nil, 0, io.EOF
+    } else if offset > fileSize {
+        log.Warn("Data file might be corrupted, offset is larger than file size")
+        return nil, 0, io.EOF
     }
 
-    headerBuffer, err := df.readNBytes(headerBytes, offset)
+    var readHeaderSize int64 = maxLogRecordHeaderSize
+    if offset + readHeaderSize > fileSize {
+        readHeaderSize = fileSize - offset
+    }
+
+    headerBuffer, err := df.readNBytes(readHeaderSize, offset)
     if err != nil {
         return nil, 0, err
     }
@@ -53,27 +65,40 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
         return nil, 0, nil
     }
     if header.crc == 0 && header.keySize == 0 && header.valueSize == 0 {
+        log.Warn("Data file might be corrupted, there are some extra zero value bytes in the end of file")
         return nil, 0, io.EOF
     }
 
     keySize, valueSize := int64(header.keySize), int64(header.valueSize)
+    if (keySize <= 0) {
+        log.Error("Data file is corrupted, key size is less than or equal to zero")
+        return nil, 0, ErrDataFileCorrupted
+    }
     var recordSize = headerSize + keySize + valueSize
 
     logRecord := &LogRecord{Type: header.recordType}
-    if keySize >= 0 || valueSize >= 0 {
-        kvBuffer, err := df.readNBytes(keySize + valueSize, offset + headerSize)
-        if err != nil {
-            return nil, 0, err
-        }
-
-        logRecord.Key = kvBuffer[:keySize]
-        logRecord.Value = kvBuffer[keySize:]
+    kvBuffer, err := df.readNBytes(keySize + valueSize, offset + headerSize)
+    if err != nil {
+        return nil, 0, err
     }
+
+    logRecord.Key = kvBuffer[:keySize]
+    logRecord.Value = kvBuffer[keySize:]
 
     crc := GetLogRecordCRC(logRecord, headerBuffer[crc32.Size : headerSize])
+    
     if crc != header.crc {
+        log.Error("Data file is corrupted, crc value is not matched")
+        log.Error(fmt.Sprintf(
+            LogRecordEntryFormatString, 
+            offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value))
         return nil, 0, ErrInvalidCRC
     }
+
+    log.Debug(fmt.Sprintf(
+        LogRecordEntryFormatString, 
+        offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value))
+    
     return logRecord, recordSize, nil
 }
 
