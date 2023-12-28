@@ -50,7 +50,35 @@ func Open(options Options) (*DB, error) {
 }
 
 func (db *DB) Close() error {
+    if db.activeFile == nil {
+        return nil
+    }
+
+    db.mutex.Lock()
+    defer db.mutex.Unlock()
+
+    if err := db.activeFile.Close(); err != nil {
+        return err
+    }
+
+    for _, file := range db.olderFiles {
+        if err := file.Close(); err != nil {
+            return err
+        }
+    }
+
     return nil
+}
+
+func (db *DB) Sync() error {
+    if db.activeFile == nil {
+        return nil
+    }
+
+    db.mutex.Lock()
+    defer db.mutex.Unlock()
+
+    return db.activeFile.Sync()
 }
 
 func (db *DB) Put(key []byte, value []byte) error {
@@ -87,6 +115,10 @@ func (db *DB) Get(key []byte) ([]byte, error) {
         return nil, ErrKeyNotFound
     }
 
+    return db.GetValueByPosition(logRecordPos)
+}
+
+func (db *DB) GetValueByPosition(logRecordPos *data.LogRecordPos) ([]byte, error) {
     var dataFile *data.DataFile
     if db.activeFile.FileId == logRecordPos.FileId {
         dataFile = db.activeFile
@@ -110,6 +142,17 @@ func (db *DB) Get(key []byte) ([]byte, error) {
     return logRecord.Value, nil
 }
 
+func (db *DB) ListKeys() [][]byte {
+    iterator := db.NewIterator(DefaultIteratorOptions)
+    keys := make([][]byte, db.index.Size())
+    var idx int
+    for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+        keys[idx] = iterator.Key()
+        idx++
+    }
+    return keys
+}
+
 func (db *DB) Delete(key []byte) error {
     if len(key) == 0 {
         return ErrKeyIsEmpty
@@ -130,6 +173,25 @@ func (db *DB) Delete(key []byte) error {
         return ErrIndexUpdateFailed
     }
 
+    return nil
+}
+
+func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
+    db.mutex.RLock()
+    defer db.mutex.RUnlock()
+
+    iterator := db.index.Iterator(false)
+    for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+        value, err := db.GetValueByPosition(iterator.Value())
+        if err != nil {
+            return err
+        }
+
+        if !fn(iterator.Key(), value) {
+            break
+        }
+    }
+    
     return nil
 }
 

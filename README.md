@@ -63,7 +63,7 @@ type DataFile struct {
 ```
 
 ### Data
-For this DB, key cannot be empty, value can be empty.
+For this DB, key cannot be empty, value can be empty (intuitive way).
 
 ## Golang Notes
 ### RWMutex
@@ -285,3 +285,33 @@ const (
 )
 ```
 LogRecordNormal is 0, LogRecordDeleted is 1.
+
+### Conversion
+#### Convert []byte to string
+```
+import "fmt"
+
+world := []byte{'w', 'o', 'r', 'l', 'd'}
+fmt.Println(world)
+fmt.Println(string(world))
+```
+
+#### Convert string to []byte
+```
+import "fmt"
+
+hello := "hello"
+fmt.Println(hello)
+fmt.Println([]byte(hello))
+```
+
+### Shuffle
+```
+var randomList []int
+for i := 1; i < 999; i++ {
+    randomList = append(randomList, i)
+}
+source := rand.NewSource(time.Now().UnixNano())
+random := rand.New(source)
+random.Shuffle(len(randomList), func(i, j int) { randomList[i], randomList[j] = randomList[j], randomList[i] })
+```

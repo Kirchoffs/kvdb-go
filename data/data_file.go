@@ -91,13 +91,15 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
         log.Error("Data file is corrupted, crc value is not matched")
         log.Error(fmt.Sprintf(
             LogRecordEntryFormatString, 
-            offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value))
+            offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value,
+        ))
         return nil, 0, ErrInvalidCRC
     }
 
     log.Debug(fmt.Sprintf(
         LogRecordEntryFormatString, 
-        offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value))
+        offset, crc, header.crc, header.recordType, header.keySize, header.valueSize, logRecord.Key, logRecord.Value,
+    ))
     
     return logRecord, recordSize, nil
 }

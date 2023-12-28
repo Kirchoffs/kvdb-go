@@ -1,7 +1,9 @@
 package index
 
 import (
+    "bytes"
     "kvdb-go/data"
+    "sort"
     "sync"
 
     "github.com/google/btree"
@@ -44,4 +46,82 @@ func (bt *BTree) Delete(key []byte) bool {
     oldItem := bt.tree.Delete(itemKey)
     bt.lock.Unlock()
     return oldItem != nil
+}
+
+func (bt *BTree) Size() int {
+    bt.lock.RLock()
+    defer bt.lock.RUnlock()
+    return bt.tree.Len()
+}
+
+func (bt *BTree) Iterator(reverse bool) Iterator {
+    if bt.tree == nil {
+        return nil
+    }
+
+    bt.lock.RLock()
+    defer bt.lock.RUnlock()
+    return newBTreeIterator(bt.tree, reverse)
+}
+
+type btreeIterator struct {
+    curIndex int
+    reverse bool
+    values []*Item
+}
+
+func newBTreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
+    var idx int
+    values := make([]*Item, tree.Len())
+
+    saveValues := func(it btree.Item) bool {
+        values[idx] = it.(*Item)
+        idx++
+        return true
+    }
+
+    if reverse {
+        tree.Descend(saveValues)
+    } else {
+        tree.Ascend(saveValues)
+    }
+
+    return &btreeIterator{
+        curIndex: 0,
+        reverse: reverse,
+        values: values,
+    }
+}
+
+func (bti *btreeIterator) Rewind() {
+    bti.curIndex = 0
+}
+
+func (bti *btreeIterator) Seek(key []byte) {
+    bti.curIndex = sort.Search(len(bti.values), func(i int) bool {
+        if bti.reverse {
+            return bytes.Compare(bti.values[i].key, key) <= 0
+        }
+        return bytes.Compare(bti.values[i].key, key) >= 0
+    })
+}
+
+func (bti *btreeIterator) Next() {
+    bti.curIndex++
+}
+
+func (bti *btreeIterator) Valid() bool {
+    return bti.curIndex < len(bti.values)
+}
+
+func (bti *btreeIterator) Key() []byte {
+    return bti.values[bti.curIndex].key
+}
+
+func (bti *btreeIterator) Value() *data.LogRecordPos {
+    return bti.values[bti.curIndex].pos
+}
+
+func (bti *btreeIterator) Close() {
+    bti.values = nil
 }

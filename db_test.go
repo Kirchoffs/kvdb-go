@@ -17,7 +17,7 @@ func init() {
 func destroyDB(db *DB) {
     if db != nil {
         if db.activeFile != nil {
-            _ = db.Close()
+            db.Close()
         }
         err := os.RemoveAll(db.options.DirPath)
         if err != nil {
@@ -28,7 +28,7 @@ func destroyDB(db *DB) {
 
 func TestOpen(t *testing.T) {
     options := DefaultOptions
-    dir, _ := os.MkdirTemp("", "kvdb-go")
+    dir, _ := os.MkdirTemp("", "kvdb-go-")
     options.DirPath = dir
     db, err := Open(options)
     defer destroyDB(db)
@@ -97,7 +97,7 @@ func TestDBPut(t *testing.T) {
 
 func TestDBGet(t *testing.T) {
     options := DefaultOptions
-    dir, _ := os.MkdirTemp("", "kvdb-go-get")
+    dir, _ := os.MkdirTemp("", "kvdb-go-get-")
     options.DirPath = dir
     options.DataFileSize = 64 * 1024 * 1024
     db, err := Open(options)
@@ -166,7 +166,7 @@ func TestDBGet(t *testing.T) {
 
 func TestDBDelete(t *testing.T) {
     options := DefaultOptions
-    dir, _ := os.MkdirTemp("", "kvdb-go-delete")
+    dir, _ := os.MkdirTemp("", "kvdb-go-delete-")
     options.DirPath = dir
     options.DataFileSize = 64 * 1024 * 1024
     db, err := Open(options)
@@ -213,4 +213,97 @@ func TestDBDelete(t *testing.T) {
     val2, err := db2.Get(utils.GetTestKey(22))
     assert.Nil(t, err)
     assert.Equal(t, val1, val2)
+}
+
+func TestDBListKeys(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-list-keys-")
+    options.DirPath = dir
+    options.DataFileSize = 64 * 1024 * 1024
+    db, err := Open(options)
+    defer destroyDB(db)
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    // 1. List keys from empty database
+    keys1 := db.ListKeys()
+    assert.Equal(t, 0, len(keys1))
+
+    // 2. Only one log record
+    err = db.Put(utils.GetTestKey(1), utils.GetTestValue(9))
+    assert.Nil(t, err)
+    keys2 := db.ListKeys()
+    assert.Equal(t, 1, len(keys2))
+
+    // 3. Multiple log records
+    var keysGenerated [][]byte
+    var recordsNum = 100
+    for i := 0; i < recordsNum; i++ {
+        key := utils.GetTestKey(i)
+        value := utils.GetTestValue(10)
+        err := db.Put(key, value)
+        assert.Nil(t, err)
+        keysGenerated = append(keysGenerated, key)
+    }
+    keys3 := db.ListKeys()
+    for i := 0; i < recordsNum; i++ {
+        assert.Equal(t, keysGenerated[i], keys3[i])
+    }
+}
+
+func TestDBFold(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-list-keys-")
+    options.DirPath = dir
+    options.DataFileSize = 64 * 1024 * 1024
+    db, err := Open(options)
+    defer destroyDB(db)
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    db.Put(utils.GetTestKey(1), utils.GetTestValue(111))
+    db.Put(utils.GetTestKey(2), utils.GetTestValue(222))
+    db.Put(utils.GetTestKey(3), utils.GetTestValue(333))
+    db.Put(utils.GetTestKey(4), utils.GetTestValue(444))
+    db.Put(utils.GetTestKey(5), utils.GetTestValue(555))
+
+    db.Fold(func(key []byte, value []byte) bool {
+        if string(key) == string(utils.GetTestKey(3)) {
+            return false
+        }
+        assert.LessOrEqual(t, key, utils.GetTestKey(3))
+        t.Log(string(key))
+        return true
+    })
+}
+
+func TestDBClose(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-close-")
+    options.DirPath = dir
+    options.DataFileSize = 64 * 1024 * 1024
+    db, err := Open(options)
+    defer destroyDB(db)
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    err = db.Put(utils.GetTestKey(1), utils.GetTestValue(111))
+    assert.Nil(t, err)
+}
+
+func TestDBSync(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-sync-")
+    options.DirPath = dir
+    options.DataFileSize = 64 * 1024 * 1024
+    db, err := Open(options)
+    defer destroyDB(db)
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    err = db.Put(utils.GetTestKey(1), utils.GetTestValue(111))
+    assert.Nil(t, err)
+
+    err = db.Sync()
+    assert.Nil(t, err)
 }

@@ -9,6 +9,11 @@ type Options struct {
     IndexType IndexType
 }
 
+type IteratorOptions struct {
+    Prefix []byte
+    Reverse bool
+}
+
 type IndexType = int8
 
 const (
@@ -16,9 +21,14 @@ const (
     ARTIndex
 )
 
-var DefaultOptions = Options{
+var DefaultOptions = Options {
     DirPath: os.TempDir(),
     DataFileSize: 1 << 28,
     SyncWrites: false,
     IndexType: BTreeIndex,
+}
+
+var DefaultIteratorOptions = IteratorOptions {
+    Prefix: nil,
+    Reverse: false,
 }
