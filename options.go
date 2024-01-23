@@ -14,6 +14,11 @@ type IteratorOptions struct {
     Reverse bool
 }
 
+type WriteBatchOptions struct {
+    MaxBatchSize uint
+    SyncWrites bool
+}
+
 type IndexType = int8
 
 const (
@@ -31,4 +36,9 @@ var DefaultOptions = Options {
 var DefaultIteratorOptions = IteratorOptions {
     Prefix: nil,
     Reverse: false,
+}
+
+var DefaultWriteBatchOptions = WriteBatchOptions {
+    MaxBatchSize: 10000,
+    SyncWrites: true,
 }

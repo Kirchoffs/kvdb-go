@@ -18,6 +18,7 @@ type DB struct {
     activeFile *data.DataFile
     olderFiles map[uint32]*data.DataFile
     index index.Indexer
+    seqNum uint64
 }
 
 func Open(options Options) (*DB, error) {
@@ -87,12 +88,12 @@ func (db *DB) Put(key []byte, value []byte) error {
     }
 
     logRecord := &data.LogRecord {
-        Key: key,
+        Key: logRecordKeyWithSeq(key, nonTransactionSeqNum),
         Value: value,
         Type: data.LogRecordNormal,
     }
 
-    if pos, err := db.appendLogRecord(logRecord); err != nil {
+    if pos, err := db.appendLogRecordWithLock(logRecord); err != nil {
         return err
     } else {
         if ok := db.index.Put(key, pos); !ok {
@@ -162,8 +163,12 @@ func (db *DB) Delete(key []byte) error {
         return nil
     }
 
-    logRecord := &data.LogRecord {Key: key, Type: data.LogRecordDeleted}
-    _, err := db.appendLogRecord(logRecord)
+    logRecord := &data.LogRecord {
+        Key: logRecordKeyWithSeq(key, nonTransactionSeqNum), 
+        Type: data.LogRecordDeleted,
+    }
+
+    _, err := db.appendLogRecordWithLock(logRecord)
     if err != nil {
         return err
     }
@@ -195,10 +200,14 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
     return nil
 }
 
-func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
+func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
     db.mutex.Lock()
     defer db.mutex.Unlock()
 
+    return db.appendLogRecord(logRecord)
+}
+
+func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
     if db.activeFile == nil {
         if err := db.setActiveDataFile(); err != nil {
             return nil, err
@@ -297,6 +306,22 @@ func (db *DB) loadIndexFromDataFiles() error {
         return nil
     }
 
+    updateIndex := func(key []byte, typ data.LogRecordType, logRecordPos *data.LogRecordPos) {
+        var ok bool
+        if typ == data.LogRecordDeleted {
+            ok = db.index.Delete(key)
+        } else {
+            ok = db.index.Put(key, logRecordPos)
+        }
+
+        if !ok {
+            panic("Index update failed during startup")
+        }
+    }
+
+    transactionRecords := make(map[uint64][]*data.TransactionRecord)
+    var currentSeqNum = nonTransactionSeqNum
+    
     for _, fileId := range db.fileIds {
         var dataFile *data.DataFile
         if fileId == db.activeFile.FileId {
@@ -320,14 +345,27 @@ func (db *DB) loadIndexFromDataFiles() error {
                 FileId: fileId,
                 Offset: offset,
             }
-            var ok bool
-            if logRecord.Type == data.LogRecordDeleted {
-                ok = db.index.Delete(logRecord.Key)
+
+            realKey, seqNum := parseLogRecordKeyWithSeq(logRecord.Key)
+            if seqNum == nonTransactionSeqNum {
+                updateIndex(realKey, logRecord.Type, logRecordPos)
             } else {
-                ok = db.index.Put(logRecord.Key, logRecordPos)
+                if logRecord.Type == data.LogRecordTxFinished {
+                    for _, transactionRecord := range transactionRecords[seqNum] {
+                        updateIndex(transactionRecord.Record.Key, transactionRecord.Record.Type, transactionRecord.Pos)
+                    }
+                    delete(transactionRecords, seqNum)
+                } else {
+                    logRecord.Key = realKey
+                    transactionRecords[seqNum] = append(transactionRecords[seqNum], &data.TransactionRecord {
+                        Record: logRecord,
+                        Pos: logRecordPos,
+                    })
+                }
             }
-            if !ok {
-                return ErrIndexUpdateFailed
+
+            if seqNum > currentSeqNum {
+                currentSeqNum = seqNum
             }
 
             offset += readLength
@@ -337,6 +375,8 @@ func (db *DB) loadIndexFromDataFiles() error {
             db.activeFile.WriteOffset = offset
         }
     }
+
+    db.seqNum = currentSeqNum
 
     return nil
 }

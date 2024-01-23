@@ -11,6 +11,7 @@ type LogRecordType = byte
 const (
     LogRecordNormal LogRecordType = iota
     LogRecordDeleted LogRecordType = iota
+    LogRecordTxFinished LogRecordType = iota
 )
 
 // crc type key_size value_size key value
@@ -32,6 +33,11 @@ type LogRecordHeader struct {
 type LogRecordPos struct {
     FileId uint32
     Offset int64
+}
+
+type TransactionRecord struct {
+    Record *LogRecord
+    Pos *LogRecordPos
 }
 
 // crc | type | key_size | value_size | key | value
