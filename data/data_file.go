@@ -19,7 +19,11 @@ const (
     LogRecordEntryFormatString = "offset: %d, crc: %d, header.crc: %d, header.recordType: %d, header.keySize: %d, header.valueSize: %d, key: %s, value: %s"
 )
 
-const DataFileSuffix = ".data"
+const (
+    DataFileNameSuffix = ".data"
+    HintFileName = "hint-index"
+    MergeFinishedFileName = "merge-finished"
+)
 
 type DataFile struct {
     FileId uint32
@@ -28,13 +32,32 @@ type DataFile struct {
 }
 
 func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
-    fileName := filepath.Join(dirPath, fmt.Sprintf("%09d%s", fileId, DataFileSuffix))
+    fileName := GetDataFileName(dirPath, fileId)
     
+    return newDataFile(fileName, fileId)
+}
+
+func OpenHintFile(dirPath string) (*DataFile, error) {
+    fileName := filepath.Join(dirPath, HintFileName)
+    
+    return newDataFile(fileName, 0)
+}
+
+func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
+    fileName := filepath.Join(dirPath, MergeFinishedFileName)
+    
+    return newDataFile(fileName, 0)
+}
+
+func GetDataFileName(dirPath string, fileId uint32) string {
+    return filepath.Join(dirPath, fmt.Sprintf("%d%s", fileId, DataFileNameSuffix))
+}
+
+func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
     ioManager, err := fio.NewIOManager(fileName)
     if err != nil {
         return nil, err
     }
-
     return &DataFile{fileId, 0, ioManager}, nil
 }
 
@@ -111,6 +134,16 @@ func (df *DataFile) Write(buf []byte) error {
     }
     df.WriteOffset += int64(n)
     return nil
+}
+
+func (df *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
+    record := &LogRecord{
+        Key: key,
+        Value: EncodeLogRecordPos(pos),
+    }
+
+    encodedRecord, _ := EncodeLogRecord(record)
+    return df.Write(encodedRecord)
 }
 
 func (df *DataFile) Sync() error {

@@ -1,14 +1,15 @@
 package kvdb_go
 
 import (
-    "io"
-    "kvdb-go/data"
-    "kvdb-go/index"
-    "os"
-    "sort"
-    "strconv"
-    "strings"
-    "sync"
+	"io"
+	"kvdb-go/data"
+	"kvdb-go/index"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 type DB struct {
@@ -19,6 +20,7 @@ type DB struct {
     olderFiles map[uint32]*data.DataFile
     index index.Indexer
     seqNum uint64
+    isMerging bool
 }
 
 func Open(options Options) (*DB, error) {
@@ -39,7 +41,15 @@ func Open(options Options) (*DB, error) {
         index: index.NewIndexer(options.IndexType),
     }
 
+    if err := db.loadMergeFiles(); err != nil {
+        return nil, err
+    }
+
     if err := db.loadDataFiles(); err != nil {
+        return nil, err
+    }
+
+    if err := db.loadIndexFromHintFile(); err != nil {
         return nil, err
     }
 
@@ -214,7 +224,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
         }
     }
 
-    encodedRecord, size := data.EncodedLogRecord(logRecord)
+    encodedRecord, size := data.EncodeLogRecord(logRecord)
     if db.activeFile.WriteOffset + size > db.options.DataFileSize {
         if err := db.activeFile.Sync(); err != nil {
             return nil, err
@@ -270,7 +280,7 @@ func (db *DB) loadDataFiles() error {
 
     var fileIds []uint32
     for _, entry := range dirEntries {
-        if strings.HasSuffix(entry.Name(), data.DataFileSuffix) {
+        if strings.HasSuffix(entry.Name(), data.DataFileNameSuffix) {
             splitNames := strings.Split(entry.Name(), ".")
             fileId, err := strconv.Atoi(splitNames[0])
             if err != nil {
@@ -306,6 +316,18 @@ func (db *DB) loadIndexFromDataFiles() error {
         return nil
     }
 
+    isMerged, nonMergeFileId := false, uint32(0)
+    mergeFinishedFile := filepath.Join(db.options.DirPath, data.MergeFinishedFileName)
+    if _, err := os.Stat(mergeFinishedFile); err == nil {
+        id, err := db.getNonMergeFileId(db.options.DirPath)
+        if err != nil {
+            return err
+        }
+
+        isMerged = true
+        nonMergeFileId = id
+    }
+
     updateIndex := func(key []byte, typ data.LogRecordType, logRecordPos *data.LogRecordPos) {
         var ok bool
         if typ == data.LogRecordDeleted {
@@ -323,6 +345,11 @@ func (db *DB) loadIndexFromDataFiles() error {
     var currentSeqNum = nonTransactionSeqNum
     
     for _, fileId := range db.fileIds {
+        var fileId = uint32(fileId)
+        if isMerged && fileId < nonMergeFileId {
+            continue
+        }
+
         var dataFile *data.DataFile
         if fileId == db.activeFile.FileId {
             dataFile = db.activeFile

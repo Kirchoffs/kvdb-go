@@ -42,7 +42,7 @@ type TransactionRecord struct {
 
 // crc | type | key_size | value_size | key | value
 //   4 |    1 |    max 5 |      max 5 | var |   var
-func EncodedLogRecord(logRecord *LogRecord) ([]byte, int64) {
+func EncodeLogRecord(logRecord *LogRecord) ([]byte, int64) {
     header := make([]byte, maxLogRecordHeaderSize)
 
     header[4] = logRecord.Type
@@ -60,6 +60,25 @@ func EncodedLogRecord(logRecord *LogRecord) ([]byte, int64) {
     binary.LittleEndian.PutUint32(encodedBytes, crc)
 
     return encodedBytes, int64(size)
+}
+
+func EncodeLogRecordPos(pos *LogRecordPos) []byte {
+    buf := make([]byte, binary.MaxVarintLen32 + binary.MaxVarintLen64)
+    var index = 0
+    index += binary.PutVarint(buf[index:], int64(pos.FileId))
+    index += binary.PutVarint(buf[index:], pos.Offset)
+    return buf[:index]
+}
+
+func DecodeLogRecordPos(buf []byte) *LogRecordPos {
+    var index = 0
+    fileId, n := binary.Varint(buf[index:])
+    index += n
+    offset, _ := binary.Varint(buf[index:])
+    return &LogRecordPos{
+        FileId: uint32(fileId),
+        Offset: offset,
+    }
 }
 
 func DecodeLogRecordHeader(buf []byte) (*LogRecordHeader, int64) {

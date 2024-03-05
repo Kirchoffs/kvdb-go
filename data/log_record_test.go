@@ -14,13 +14,13 @@ func init() {
     logrus.SetLevel(logrus.DebugLevel)
 }
 
-func TestEncodedLogRecord(t *testing.T) {
+func TestEncodeLogRecord(t *testing.T) {
     logRecord := &LogRecord{
         []byte("key"),
         []byte("value"),
         LogRecordNormal,
     }
-    encodedBytes, encodedBytesLength := EncodedLogRecord(logRecord)
+    encodedBytes, encodedBytesLength := EncodeLogRecord(logRecord)
     assert.NotNil(t, encodedBytes)
     assert.Equal(t, encodedBytesLength, int64(4 + 1 + 1 + 1 + 3 + 5))
     t.Log(encodedBytes)
@@ -30,7 +30,7 @@ func TestEncodedLogRecord(t *testing.T) {
         Key: []byte("key"),
         Type: LogRecordNormal,
     }
-    encodedBytes, encodedBytesLength = EncodedLogRecord(logRecordEmptyValue)
+    encodedBytes, encodedBytesLength = EncodeLogRecord(logRecordEmptyValue)
     assert.NotNil(t, encodedBytes)
     assert.Equal(t, encodedBytesLength, int64(4 + 1 + 1 + 1 + 3 + 0))
     t.Log(encodedBytes)
@@ -41,7 +41,7 @@ func TestEncodedLogRecord(t *testing.T) {
         []byte("value"),
         LogRecordDeleted,
     }
-    encodedBytes, encodedBytesLength = EncodedLogRecord(logRecordDeleted)
+    encodedBytes, encodedBytesLength = EncodeLogRecord(logRecordDeleted)
     assert.NotNil(t, encodedBytes)
     assert.Equal(t, encodedBytesLength, int64(4 + 1 + 1 + 1 + 3 + 5))
     t.Log(encodedBytes)
@@ -54,7 +54,7 @@ func TestDecodeLogRecordHeader(t *testing.T) {
         []byte("value"),
         LogRecordNormal,
     }
-    encodedBytes, _ := EncodedLogRecord(logRecord)
+    encodedBytes, _ := EncodeLogRecord(logRecord)
     header, headerSize := DecodeLogRecordHeader(encodedBytes)
     assert.NotNil(t, header)
     assert.Equal(t, headerSize, int64(4 + 1 + 1 + 1))
@@ -66,7 +66,7 @@ func TestDecodeLogRecordHeader(t *testing.T) {
         Key: []byte("key"),
         Type: LogRecordNormal,
     }
-    encodedBytes, _ = EncodedLogRecord(logRecordEmptyValue)
+    encodedBytes, _ = EncodeLogRecord(logRecordEmptyValue)
     header, headerSize = DecodeLogRecordHeader(encodedBytes)
     assert.NotNil(t, header)
     assert.Equal(t, headerSize, int64(4 + 1 + 1 + 1))
@@ -79,7 +79,7 @@ func TestDecodeLogRecordHeader(t *testing.T) {
         []byte("value"),
         LogRecordDeleted,
     }
-    encodedBytes, _ = EncodedLogRecord(logRecordDeleted)
+    encodedBytes, _ = EncodeLogRecord(logRecordDeleted)
     header, headerSize = DecodeLogRecordHeader(encodedBytes)
     assert.NotNil(t, header)
     assert.Equal(t, headerSize, int64(4 + 1 + 1 + 1))
@@ -94,7 +94,7 @@ func TestGetLogRecordCRC(t *testing.T) {
         []byte("value"),
         LogRecordNormal,
     }
-    encodedBytes, _ := EncodedLogRecord(logRecord)
+    encodedBytes, _ := EncodeLogRecord(logRecord)
     header, _ := DecodeLogRecordHeader(encodedBytes)
     crc := GetLogRecordCRC(logRecord, encodedBytes[crc32.Size : crc32.Size + 1 + 1 + 1])
     assert.Equal(t, crc, header.crc)
@@ -103,7 +103,7 @@ func TestGetLogRecordCRC(t *testing.T) {
         Key: []byte("key"),
         Type: LogRecordNormal,
     }
-    encodedBytes, _ = EncodedLogRecord(logRecordEmptyValue)
+    encodedBytes, _ = EncodeLogRecord(logRecordEmptyValue)
     header, _ = DecodeLogRecordHeader(encodedBytes)
     crc = GetLogRecordCRC(logRecordEmptyValue, encodedBytes[crc32.Size : crc32.Size + 1 + 1 + 1])
     assert.Equal(t, crc, header.crc)
@@ -113,7 +113,7 @@ func TestGetLogRecordCRC(t *testing.T) {
         []byte("value"),
         LogRecordDeleted,
     }
-    encodedBytes, _ = EncodedLogRecord(logRecordDeleted)
+    encodedBytes, _ = EncodeLogRecord(logRecordDeleted)
     header, _ = DecodeLogRecordHeader(encodedBytes)
     crc = GetLogRecordCRC(logRecordDeleted, encodedBytes[crc32.Size : crc32.Size + 1 + 1 + 1])
     assert.Equal(t, crc, header.crc)

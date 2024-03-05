@@ -75,7 +75,7 @@ func TestDataFileRead(t *testing.T) {
         Key: []byte("key"),
         Value: []byte("value"),
     }
-    encodedRecordAlpha, encodedRecordAlphaSize := EncodedLogRecord(recordAlpha)
+    encodedRecordAlpha, encodedRecordAlphaSize := EncodeLogRecord(recordAlpha)
     err = dataFile.Write(encodedRecordAlpha)
     assert.Nil(t, err)
     readRecordAlpha, readRecordAlphaSize, err := dataFile.ReadLogRecord(0)
@@ -87,7 +87,7 @@ func TestDataFileRead(t *testing.T) {
         Key: []byte("key-beta"),
         Value: []byte("value-beta"),
     }
-    encodedRecordBeta, encodedRecordBetaSize := EncodedLogRecord(recordBeta)
+    encodedRecordBeta, encodedRecordBetaSize := EncodeLogRecord(recordBeta)
     err = dataFile.Write(encodedRecordBeta)
     assert.Nil(t, err)
     readRecordBeta, readRecordBetaSize, err := dataFile.ReadLogRecord(encodedRecordAlphaSize)
@@ -100,7 +100,7 @@ func TestDataFileRead(t *testing.T) {
         Value: []byte("value-deleted"),
         Type: LogRecordDeleted,
     }
-    encodedRecordDeleted, encodedRecordDeletedSize := EncodedLogRecord(recordDeleted)
+    encodedRecordDeleted, encodedRecordDeletedSize := EncodeLogRecord(recordDeleted)
     err = dataFile.Write(encodedRecordDeleted)
     assert.Nil(t, err)
     readRecordDeleted, readRecordDeletedSize, err := dataFile.ReadLogRecord(encodedRecordAlphaSize + encodedRecordBetaSize)
@@ -110,6 +110,6 @@ func TestDataFileRead(t *testing.T) {
 }
 
 func deleteFile(dirPath string, fileId uint32) {
-    fileName := filepath.Join(dirPath, fmt.Sprintf("%09d%s", fileId, DataFileSuffix))
+    fileName := filepath.Join(dirPath, fmt.Sprintf("%09d%s", fileId, DataFileNameSuffix))
     os.Remove(fileName)
 }
