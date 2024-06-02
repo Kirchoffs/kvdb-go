@@ -1,10 +1,10 @@
 package index
 
 import (
-    "bytes"
-    "kvdb-go/data"
+	"bytes"
+	"kvdb-go/data"
 
-    "github.com/google/btree"
+	"github.com/google/btree"
 )
 
 type Indexer interface {
@@ -13,6 +13,7 @@ type Indexer interface {
     Delete(key []byte) bool
     Size() int
     Iterator(reverse bool) Iterator
+    Close() error
 }
 
 type IndexType = int8
@@ -20,14 +21,17 @@ type IndexType = int8
 const (
     BTreeIndex IndexType = iota + 1
     ARTIndex
+    BPTreeIndex
 )
 
-func NewIndexer(indexType IndexType) Indexer {
+func NewIndexer(indexType IndexType, dirPath string, sync bool) Indexer {
     switch indexType {
     case BTreeIndex:
         return NewBTree()
     case ARTIndex:
-        return nil
+        return NewART()
+    case BPTreeIndex:
+        return NewBPlusTree(dirPath, sync)
     default:
         panic("unsupported index type")
     }

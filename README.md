@@ -5,6 +5,12 @@
 >> go mod init kvdb-go
 >> go get github.com/google/btree
 >> go get github.com/stretchr/testify
+>> go get github.com/plar/go-adaptive-radix-tree
+>> go get github.com/boltdb/bolt
+```
+
+```
+>> go mod tidy
 ```
 
 ## Test

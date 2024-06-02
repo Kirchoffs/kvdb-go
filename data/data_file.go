@@ -23,6 +23,7 @@ const (
     DataFileNameSuffix = ".data"
     HintFileName = "hint-index"
     MergeFinishedFileName = "merge-finished"
+    SeqNumFileName = "seq-num"
 )
 
 type DataFile struct {
@@ -45,6 +46,12 @@ func OpenHintFile(dirPath string) (*DataFile, error) {
 
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
     fileName := filepath.Join(dirPath, MergeFinishedFileName)
+    
+    return newDataFile(fileName, 0)
+}
+
+func OpenSeqNumFile(dirPath string) (*DataFile, error) {
+    fileName := filepath.Join(dirPath, SeqNumFileName)
     
     return newDataFile(fileName, 0)
 }

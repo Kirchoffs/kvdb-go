@@ -24,6 +24,7 @@ type IndexType = int8
 const (
     BTreeIndex IndexType = iota + 1
     ARTIndex
+    BPTreeIndex
 )
 
 var DefaultOptions = Options {
