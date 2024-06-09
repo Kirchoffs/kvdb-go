@@ -6,7 +6,9 @@ type Options struct {
     DirPath string
     DataFileSize int64
     SyncWrites bool
+    BytesPerSync uint
     IndexType IndexType
+    MMapAtStart bool
 }
 
 type IteratorOptions struct {
@@ -31,7 +33,9 @@ var DefaultOptions = Options {
     DirPath: os.TempDir(),
     DataFileSize: 1 << 28,
     SyncWrites: false,
+    BytesPerSync: 0,
     IndexType: BTreeIndex,
+    MMapAtStart: true,
 }
 
 var DefaultIteratorOptions = IteratorOptions {

@@ -4,7 +4,6 @@ import (
     "os"
     "path/filepath"
     "testing"
-
     "github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +26,7 @@ func TestNewFileIOManager(t *testing.T) {
     destroyFile(path)
 }
 
-func TestFileIO_Write(t *testing.T) {
+func TestFileIOWrite(t *testing.T) {
     path := filepath.Join("/tmp", "test_file_io_manager")
     destroyFile(path)
 
@@ -46,7 +45,7 @@ func TestFileIO_Write(t *testing.T) {
     destroyFile(path)
 }
 
-func TestFileIO_Read(t *testing.T) {
+func TestFileIORead(t *testing.T) {
     path := filepath.Join("/tmp", "test_file_io_manager")
     destroyFile(path)
 
@@ -75,7 +74,7 @@ func TestFileIO_Read(t *testing.T) {
     destroyFile(path)
 }
 
-func TestFileIO_Sync(t *testing.T) {
+func TestFileIOSync(t *testing.T) {
     path := filepath.Join("/tmp", "test_file_io_manager")
     destroyFile(path)
 

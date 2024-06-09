@@ -7,6 +7,8 @@
 >> go get github.com/stretchr/testify
 >> go get github.com/plar/go-adaptive-radix-tree
 >> go get github.com/boltdb/bolt
+>> go get github.com/gofrs/flock
+>> go get golang.org/x/exp/mmap
 ```
 
 ```
@@ -321,3 +323,7 @@ source := rand.NewSource(time.Now().UnixNano())
 random := rand.New(source)
 random.Shuffle(len(randomList), func(i, j int) { randomList[i], randomList[j] = randomList[j], randomList[i] })
 ```
+
+## Others
+### Variable Length Integer Encoding
+Variable Length Integer (varint) is a way of encoding integers using a variable number of bytes to save space. There are two common ways: length-prefixed and continuation-bit.

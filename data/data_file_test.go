@@ -5,7 +5,7 @@ import (
     "os"
     "path/filepath"
     "testing"
-
+    "kvdb-go/fio"
     "github.com/sirupsen/logrus"
     "github.com/stretchr/testify/assert"
 )
@@ -16,21 +16,21 @@ func init() {
 }
 
 func TestOpenDataFile(t *testing.T) {
-    dataFile1, err := OpenDataFile(os.TempDir(), 0)
+    dataFile1, err := OpenDataFile(os.TempDir(), 0, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile1)
 
-    dataFile2, err := OpenDataFile(os.TempDir(), 42)
+    dataFile2, err := OpenDataFile(os.TempDir(), 42, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile2)
 
-    dataFile3, err := OpenDataFile(os.TempDir(), 0)
+    dataFile3, err := OpenDataFile(os.TempDir(), 0, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile3)
 }
 
 func TestDataFileWrite(t *testing.T) {
-    dataFile, err := OpenDataFile(os.TempDir(), 0)
+    dataFile, err := OpenDataFile(os.TempDir(), 0, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile)
 
@@ -42,7 +42,7 @@ func TestDataFileWrite(t *testing.T) {
 }
 
 func TestDataFileClose(t *testing.T) {
-    dataFile, err := OpenDataFile(os.TempDir(), 42)
+    dataFile, err := OpenDataFile(os.TempDir(), 42, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile)
 
@@ -51,7 +51,7 @@ func TestDataFileClose(t *testing.T) {
 }
 
 func TestDataFileSync(t *testing.T) {
-    dataFile, err := OpenDataFile(os.TempDir(), 42)
+    dataFile, err := OpenDataFile(os.TempDir(), 42, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile)
 
@@ -67,7 +67,7 @@ func TestDataFileRead(t *testing.T) {
     fileId := uint32(42)
     deleteFile(dirPath, fileId)
 
-    dataFile, err := OpenDataFile(os.TempDir(), 42)
+    dataFile, err := OpenDataFile(os.TempDir(), 42, fio.StandardFileIO)
     assert.Nil(t, err)
     assert.NotNil(t, dataFile)
 

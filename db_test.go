@@ -307,3 +307,26 @@ func TestDBSync(t *testing.T) {
     err = db.Sync()
     assert.Nil(t, err)
 }
+
+func TestDBFileLock(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-file-lock-")
+    options.DirPath = dir
+
+    db1, err1 := Open(options)
+    defer destroyDB(db1)
+    assert.NotNil(t, db1)
+    assert.Nil(t, err1)
+
+    db2, err2 := Open(options)
+    defer destroyDB(db2)
+    assert.Nil(t, db2)
+    assert.NotNil(t, err2)
+    assert.Equal(t, ErrDatabaseIsInUse, err2)
+
+    db1.Close()
+    db3, err3 := Open(options)
+    defer destroyDB(db3)
+    assert.NotNil(t, db3)
+    assert.Nil(t, err3)
+}

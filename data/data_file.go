@@ -32,36 +32,36 @@ type DataFile struct {
     IOManager fio.IOManager
 }
 
-func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
+func OpenDataFile(dirPath string, fileId uint32, ioType fio.IOType) (*DataFile, error) {
     fileName := GetDataFileName(dirPath, fileId)
     
-    return newDataFile(fileName, fileId)
+    return newDataFile(fileName, fileId, ioType)
 }
 
 func OpenHintFile(dirPath string) (*DataFile, error) {
     fileName := filepath.Join(dirPath, HintFileName)
     
-    return newDataFile(fileName, 0)
+    return newDataFile(fileName, 0, fio.StandardFileIO)
 }
 
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
     fileName := filepath.Join(dirPath, MergeFinishedFileName)
     
-    return newDataFile(fileName, 0)
+    return newDataFile(fileName, 0, fio.StandardFileIO)
 }
 
 func OpenSeqNumFile(dirPath string) (*DataFile, error) {
     fileName := filepath.Join(dirPath, SeqNumFileName)
     
-    return newDataFile(fileName, 0)
+    return newDataFile(fileName, 0, fio.StandardFileIO)
 }
 
 func GetDataFileName(dirPath string, fileId uint32) string {
-    return filepath.Join(dirPath, fmt.Sprintf("%d%s", fileId, DataFileNameSuffix))
+    return filepath.Join(dirPath, fmt.Sprintf("%09d%s", fileId, DataFileNameSuffix))
 }
 
-func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
-    ioManager, err := fio.NewIOManager(fileName)
+func newDataFile(fileName string, fileId uint32, ioType fio.IOType) (*DataFile, error) {
+    ioManager, err := fio.NewIOManager(fileName, ioType)
     if err != nil {
         return nil, err
     }
@@ -159,6 +159,19 @@ func (df *DataFile) Sync() error {
 
 func (df *DataFile) Close() error {
     return df.IOManager.Close()
+}
+
+func (df *DataFile) SetIOManager(dirPath string, ioType fio.IOType) error {
+    if err := df.IOManager.Close(); err != nil {
+        return err
+    }
+
+    ioManager, err := fio.NewIOManager(GetDataFileName(dirPath, df.FileId), ioType)
+    if err != nil {
+        return err
+    }
+    df.IOManager = ioManager
+    return nil
 }
 
 func (df *DataFile) readNBytes(n int64, offset int64) (buffer []byte, err error) {
