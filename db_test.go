@@ -28,7 +28,7 @@ func destroyDB(db *DB) {
 
 func TestOpen(t *testing.T) {
     options := DefaultOptions
-    dir, _ := os.MkdirTemp("", "kvdb-go-")
+    dir, _ := os.MkdirTemp("", "kvdb-go-open-")
     options.DirPath = dir
     db, err := Open(options)
     defer destroyDB(db)
@@ -329,4 +329,29 @@ func TestDBFileLock(t *testing.T) {
     defer destroyDB(db3)
     assert.NotNil(t, db3)
     assert.Nil(t, err3)
+}
+
+func TestDBStat(t *testing.T) {
+    opts := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-stat-")
+    opts.DirPath = dir
+
+    db, err := Open(opts)
+    defer destroyDB(db)
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    for i := 0; i < 10000; i++ {
+        err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
+        assert.Nil(t, err)
+    }
+
+    for i := 0; i < 10000; i++ {
+        err := db.Delete(utils.GetTestKey(i))
+        assert.Nil(t, err)
+    }
+
+    stat := db.Stat()
+    assert.NotNil(t, stat)
+    assert.True(t, stat.ReclaimableSpace > 0)
 }

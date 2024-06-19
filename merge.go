@@ -1,13 +1,14 @@
 package kvdb_go
 
 import (
-	"io"
-	"kvdb-go/data"
-	"os"
-	"path"
-	"path/filepath"
-	"sort"
-	"strconv"
+    "io"
+    "kvdb-go/data"
+    "kvdb-go/utils"
+    "os"
+    "path"
+    "path/filepath"
+    "sort"
+    "strconv"
 )
 
 const (
@@ -24,6 +25,26 @@ func (db *DB) Merge() error {
     if db.isMerging {
         db.mutex.Unlock()
         return ErrMergeInProgress
+    }
+
+    totalSize, err := utils.DirSize(db.options.DirPath)
+    if err != nil {
+        db.mutex.Unlock()
+        return err
+    }
+    if totalSize * int64(db.options.MergeTriggerRatio) < db.reclaimableSpace {
+        db.mutex.Unlock()
+        return ErrMergeTriggerRatioNotReached
+    }
+
+    availableDiskSize, err := utils.AvailableDiskSpace()
+    if err != nil {
+        db.mutex.Unlock()
+        return err
+    }
+    if uint64(totalSize - db.reclaimableSpace) >= availableDiskSize {
+        db.mutex.Unlock()
+        return ErrDiskSpaceNotEnoughForMerge
     }
 
     db.isMerging = true
@@ -164,6 +185,9 @@ func (db *DB) loadMergeFiles() error {
             mergeFinished = true
         }
         if entry.Name() == data.SeqNumFileName {
+            continue
+        }
+        if entry.Name() == fileLockName {
             continue
         }
         mergeFileNames = append(mergeFileNames, entry.Name())

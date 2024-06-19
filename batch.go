@@ -112,12 +112,17 @@ func (wb *WriteBatch) Commit() error {
     }
 
     for _, record := range wb.pendingWrites {
-        position := positions[string(record.Key)]
+        pos := positions[string(record.Key)]
+        var oldPos *data.LogRecordPos
 
         if record.Type == data.LogRecordDeleted {
-            wb.db.index.Delete(record.Key)
+            oldPos, _ = wb.db.index.Delete(record.Key)
         } else if record.Type == data.LogRecordNormal {
-            wb.db.index.Put(record.Key, position)
+            oldPos = wb.db.index.Put(record.Key, pos)
+        }
+
+        if oldPos != nil {
+            wb.db.reclaimableSpace += int64(oldPos.Size)
         }
     }
 

@@ -1,10 +1,10 @@
 package fio
 
 import (
-	"io"
-	"path/filepath"
-	"testing"
-	"github.com/stretchr/testify/assert"
+    "io"
+    "path/filepath"
+    "testing"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestMMapIOManagerRead(t *testing.T) {

@@ -1,16 +1,16 @@
 package index
 
 import (
-	"bytes"
-	"kvdb-go/data"
+    "bytes"
+    "kvdb-go/data"
 
-	"github.com/google/btree"
+    "github.com/google/btree"
 )
 
 type Indexer interface {
-    Put(key []byte, pos *data.LogRecordPos) bool
+    Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos
     Get(key []byte) *data.LogRecordPos
-    Delete(key []byte) bool
+    Delete(key []byte) (*data.LogRecordPos, bool)
     Size() int
     Iterator(reverse bool) Iterator
     Close() error

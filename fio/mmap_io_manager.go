@@ -1,8 +1,8 @@
 package fio
 
 import (
-	"os"
-	"golang.org/x/exp/mmap"
+    "os"
+    "golang.org/x/exp/mmap"
 )
 
 type MMap struct {

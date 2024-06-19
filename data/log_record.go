@@ -33,6 +33,7 @@ type LogRecordHeader struct {
 type LogRecordPos struct {
     FileId uint32
     Offset int64
+    Size uint32
 }
 
 type TransactionRecord struct {
@@ -67,6 +68,7 @@ func EncodeLogRecordPos(pos *LogRecordPos) []byte {
     var index = 0
     index += binary.PutVarint(buf[index:], int64(pos.FileId))
     index += binary.PutVarint(buf[index:], pos.Offset)
+    index += binary.PutVarint(buf[index:], int64(pos.Size))
     return buf[:index]
 }
 
@@ -74,10 +76,13 @@ func DecodeLogRecordPos(buf []byte) *LogRecordPos {
     var index = 0
     fileId, n := binary.Varint(buf[index:])
     index += n
-    offset, _ := binary.Varint(buf[index:])
+    offset, n := binary.Varint(buf[index:])
+    index += n
+    size, _ := binary.Varint(buf[index:])
     return &LogRecordPos{
         FileId: uint32(fileId),
         Offset: offset,
+        Size: uint32(size),
     }
 }
 

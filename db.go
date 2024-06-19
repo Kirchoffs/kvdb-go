@@ -1,19 +1,20 @@
 package kvdb_go
 
 import (
-	"fmt"
-	"io"
-	"kvdb-go/data"
-	"kvdb-go/fio"
-	"kvdb-go/index"
-	"os"
-	"path/filepath"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
+    "fmt"
+    "io"
+    "kvdb-go/data"
+    "kvdb-go/fio"
+    "kvdb-go/index"
+    "kvdb-go/utils"
+    "os"
+    "path/filepath"
+    "sort"
+    "strconv"
+    "strings"
+    "sync"
 
-	"github.com/gofrs/flock"
+    "github.com/gofrs/flock"
 )
 
 type DB struct {
@@ -29,12 +30,20 @@ type DB struct {
     isFirstLaunch bool
     fileLock *flock.Flock
     bytesWrite uint
+    reclaimableSpace int64
 }
 
 const (
     seqNumKey = "seq-no"
     fileLockName = "flock"
 )
+
+type Stat struct {
+    KeyNum uint
+    DataFileNum uint
+    ReclaimableSpace int64
+    DiskSize int64
+}
 
 func Open(options Options) (*DB, error) {
     if err := checkOptions(options); err != nil {
@@ -174,6 +183,28 @@ func (db *DB) Sync() error {
     return db.activeFile.Sync()
 }
 
+func (db *DB) Stat() *Stat {
+    db.mutex.RLock()
+    defer db.mutex.RUnlock()
+
+    var dataFileNum = uint(len(db.olderFiles))
+    if db.activeFile != nil {
+        dataFileNum++
+    }
+
+    dirSize, err := utils.DirSize(db.options.DirPath)
+    if err != nil {
+        panic(fmt.Sprintf("failed to get directory size: %v", err))
+    }
+
+    return &Stat {
+        KeyNum: uint(db.index.Size()),
+        DataFileNum: dataFileNum,
+        ReclaimableSpace: db.reclaimableSpace,
+        DiskSize: dirSize,
+    }
+}
+
 func (db *DB) Put(key []byte, value []byte) error {
     if len(key) == 0 {
         return ErrKeyIsEmpty
@@ -188,8 +219,8 @@ func (db *DB) Put(key []byte, value []byte) error {
     if pos, err := db.appendLogRecordWithLock(logRecord); err != nil {
         return err
     } else {
-        if ok := db.index.Put(key, pos); !ok {
-            return ErrIndexUpdateFailed
+        if oldPos := db.index.Put(key, pos); oldPos != nil {
+            db.reclaimableSpace += int64(oldPos.Size)
         }
         return nil
     }
@@ -260,14 +291,18 @@ func (db *DB) Delete(key []byte) error {
         Type: data.LogRecordDeleted,
     }
 
-    _, err := db.appendLogRecordWithLock(logRecord)
+    pos, err := db.appendLogRecordWithLock(logRecord)
     if err != nil {
         return err
     }
+    db.reclaimableSpace += int64(pos.Size)
 
-    ok := db.index.Delete(key)
+    oldPos, ok := db.index.Delete(key)
     if !ok {
         return ErrIndexUpdateFailed
+    }
+    if oldPos != nil {
+        db.reclaimableSpace += int64(oldPos.Size)
     }
 
     return nil
@@ -341,6 +376,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
     pos := &data.LogRecordPos {
         FileId: db.activeFile.FileId,
         Offset: writeOffset,
+        Size: uint32(size),
     }
 
     return pos, nil
@@ -424,15 +460,16 @@ func (db *DB) loadIndexFromDataFiles() error {
     }
 
     updateIndex := func(key []byte, typ data.LogRecordType, logRecordPos *data.LogRecordPos) {
-        var ok bool
+        var oldPos *data.LogRecordPos
         if typ == data.LogRecordDeleted {
-            ok = db.index.Delete(key)
+            oldPos, _ = db.index.Delete(key)
+            db.reclaimableSpace += int64(logRecordPos.Size)
         } else {
-            ok = db.index.Put(key, logRecordPos)
+            oldPos = db.index.Put(key, logRecordPos)
         }
 
-        if !ok {
-            panic("Index update failed during startup")
+        if oldPos != nil {
+            db.reclaimableSpace += int64(oldPos.Size)
         }
     }
 
@@ -466,6 +503,7 @@ func (db *DB) loadIndexFromDataFiles() error {
             logRecordPos := &data.LogRecordPos {
                 FileId: fileId,
                 Offset: offset,
+                Size: uint32(readLength),
             }
 
             realKey, seqNum := parseLogRecordKeyWithSeq(logRecord.Key)
@@ -510,6 +548,10 @@ func checkOptions(options Options) error {
 
     if options.DataFileSize <= 0 {
         return ErrDataFileSizeInvalid
+    }
+
+    if options.MergeTriggerRatio < 0 || options.MergeTriggerRatio > 1 {
+        return ErrMergeTriggerRatioInvalid
     }
 
     return nil

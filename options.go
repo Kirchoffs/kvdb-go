@@ -9,6 +9,7 @@ type Options struct {
     BytesPerSync uint
     IndexType IndexType
     MMapAtStart bool
+    MergeTriggerRatio float32
 }
 
 type IteratorOptions struct {
@@ -36,6 +37,7 @@ var DefaultOptions = Options {
     BytesPerSync: 0,
     IndexType: BTreeIndex,
     MMapAtStart: true,
+    MergeTriggerRatio: 0.5,
 }
 
 var DefaultIteratorOptions = IteratorOptions {

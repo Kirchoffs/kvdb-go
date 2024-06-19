@@ -1,18 +1,26 @@
 package index
 
 import (
-	"kvdb-go/data"
-	"testing"
+    "kvdb-go/data"
+    "testing"
 
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestAdaptiveRadixTreePut(t *testing.T) {
     art := NewART()
 
-    art.Put([]byte("key-1"), &data.LogRecordPos{FileId: 1, Offset: 1})
-    art.Put([]byte("key-2"), &data.LogRecordPos{FileId: 1, Offset: 2})
-    art.Put([]byte("key-3"), &data.LogRecordPos{FileId: 1, Offset: 3})
+    res1 := art.Put([]byte("key-1"), &data.LogRecordPos{FileId: 1, Offset: 1})
+    assert.Nil(t, res1)
+    res2 := art.Put([]byte("key-2"), &data.LogRecordPos{FileId: 1, Offset: 2})
+    assert.Nil(t, res2)
+    res3 := art.Put([]byte("key-3"), &data.LogRecordPos{FileId: 1, Offset: 3})
+    assert.Nil(t, res3)
+
+    res4 := art.Put([]byte("key-1"), &data.LogRecordPos{FileId: 2, Offset: 2})
+    assert.NotNil(t, res4)
+    assert.Equal(t, uint32(1), res4.FileId)
+    assert.Equal(t, int64(1), res4.Offset)
 }
 
 func TestAdaptiveRadixTreeGet(t *testing.T) {
@@ -38,12 +46,16 @@ func TestAdaptiveRadixTreeGet(t *testing.T) {
 func TestAdaptiveRadixTreeDelete(t *testing.T) {
     art := NewART()
 
-    res1 := art.Delete([]byte("key-not-exist"))
-    assert.False(t, res1)
+    res1, ok1 := art.Delete([]byte("key-not-exist"))
+    assert.False(t, ok1)
+    assert.Nil(t, res1)
 
     art.Put([]byte("key-1"), &data.LogRecordPos{FileId: 1, Offset: 1})
-    res2 := art.Delete([]byte("key-1"))
-    assert.True(t, res2)
+    res2, ok2 := art.Delete([]byte("key-1"))
+    assert.True(t, ok2)
+    assert.Equal(t, uint32(1), res2.FileId)
+    assert.Equal(t, int64(1), res2.Offset)
+
     pos := art.Get([]byte("key-1"))
     assert.Nil(t, pos)
 }
