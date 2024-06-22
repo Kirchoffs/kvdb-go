@@ -324,6 +324,37 @@ random := rand.New(source)
 random.Shuffle(len(randomList), func(i, j int) { randomList[i], randomList[j] = randomList[j], randomList[i] })
 ```
 
+### Typical Error
+#### Variable Shadowing and Unnoticed Re-declaration
+```
+var oldVal []byte
+if err := bpt.tree.Update(func(tx *bbolt.Tx) error {
+    bucket := tx.Bucket(indexBucketName)
+    if oldVal := bucket.Get(key); len(oldVal) != 0 {
+        return bucket.Delete(key)
+    }
+    return nil
+}); err != nil {
+    panic("failed to delete key from bptree")
+}
+```
+
+Here `oldVal` is redeclared in the if statement. The `oldVal` in the if statement is a new variable, not the `oldVal` in the outer scope.
+
+Correct way:
+```
+var oldVal []byte
+if err := bpt.tree.Update(func(tx *bbolt.Tx) error {
+    bucket := tx.Bucket(indexBucketName)
+    if oldVal = bucket.Get(key); len(oldVal) != 0 {
+        return bucket.Delete(key)
+    }
+    return nil
+}); err != nil {
+    panic("failed to delete key from bptree")
+}
+```
+
 ## Others
 ### Variable Length Integer Encoding
 Variable Length Integer (varint) is a way of encoding integers using a variable number of bytes to save space. There are two common ways: length-prefixed and continuation-bit.

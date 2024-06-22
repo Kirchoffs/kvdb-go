@@ -332,11 +332,11 @@ func TestDBFileLock(t *testing.T) {
 }
 
 func TestDBStat(t *testing.T) {
-    opts := DefaultOptions
+    options := DefaultOptions
     dir, _ := os.MkdirTemp("", "kvdb-go-stat-")
-    opts.DirPath = dir
+    options.DirPath = dir
 
-    db, err := Open(opts)
+    db, err := Open(options)
     defer destroyDB(db)
     assert.Nil(t, err)
     assert.NotNil(t, db)
@@ -354,4 +354,41 @@ func TestDBStat(t *testing.T) {
     stat := db.Stat()
     assert.NotNil(t, stat)
     assert.True(t, stat.ReclaimableSpace > 0)
+}
+
+func TestDBBackup(t *testing.T) {
+    options := DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-backup-src-")
+    options.DirPath = dir
+
+    db, err := Open(options)
+    defer destroyDB(db)
+
+    assert.Nil(t, err)
+    assert.NotNil(t, db)
+
+    N := 10000
+
+    for i := 0; i < N; i++ {
+        err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
+        assert.Nil(t, err)
+    }
+
+    backupDir, _ := os.MkdirTemp("", "kvdb-go-backup-dst-")
+    err = db.Backup(backupDir)
+    assert.Nil(t, err)
+
+    optionsBackup := DefaultOptions
+    optionsBackup.DirPath = backupDir
+    dbBackup, err := Open(optionsBackup)
+    defer destroyDB(dbBackup)
+    assert.Nil(t, err)
+    assert.NotNil(t, dbBackup)
+
+    assert.Equal(t, N, len(dbBackup.ListKeys()))
+    for i := 0; i < N; i++ {
+        val, err := dbBackup.Get(utils.GetTestKey(i))
+        assert.Nil(t, err)
+        assert.NotNil(t, val)
+    }
 }

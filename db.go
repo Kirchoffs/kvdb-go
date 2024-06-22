@@ -205,6 +205,13 @@ func (db *DB) Stat() *Stat {
     }
 }
 
+func (db *DB) Backup(dir string) error {
+    db.mutex.RLock()
+    defer db.mutex.RUnlock()
+
+    return utils.CopyDir(db.options.DirPath, dir, []string{fileLockName})
+}
+
 func (db *DB) Put(key []byte, value []byte) error {
     if len(key) == 0 {
         return ErrKeyIsEmpty
