@@ -30,6 +30,25 @@ Run examples:
 >> go run basic_operations.go
 ```
 
+## HTTP Server
+```
+>> go build -o server ./http/server.go
+>> chmod +x server
+>> ./server
+```
+
+```
+>> curl -X POST localhost:8080/kvdb/put -d '{"k1": "v1", "k2": "v2"}'
+>> curl "localhost:8080/kvdb/get?key=k1"
+>> curl "localhost:8080/kvdb/get?key=k2"
+>> curl "localhost:8080/kvdb/get?key=k3"
+>> curl "localhost:8080/kvdb/list"
+>> curl -X DELETE "localhost:8080/kvdb/delete?key=k1"
+>> curl "localhost:8080/kvdb/get?key=k1"
+>> curl "localhost:8080/kvdb/list"
+>> curl "localhost:8080/kvdb/stat"
+```
+
 ## Tools
 ### View raw binary data
 ```

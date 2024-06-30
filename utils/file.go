@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"io/fs"
-	"os"
-	"path/filepath"
-	"strings"
-	"syscall"
+    "io/fs"
+    "os"
+    "path/filepath"
+    "strings"
+    "syscall"
 )
 
 func DirSize(dirPath string) (int64, error) {
