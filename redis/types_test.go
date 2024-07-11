@@ -110,3 +110,52 @@ func TestRedisDataStructureHDel(t *testing.T) {
     assert.Nil(t, err)
     assert.False(t, ok6)
 }
+
+func TestRedisDataStructureSetOperation(t *testing.T) {
+    options := kvdb.DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-redis-set-operation-")
+    options.DirPath = dir
+
+    rds, err := NewRedisDataStructure(options)
+    assert.Nil(t, err)
+
+    ok, err := rds.SAdd(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.SAdd(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+
+    ok, err = rds.SAdd(utils.GetTestKey(1), []byte("value-beta"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.SIsMember(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.SIsMember(utils.GetTestKey(1), []byte("value-beta"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.SIsMember(utils.GetTestKey(1), []byte("value-gamma"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+
+    ok, err = rds.SIsMember(utils.GetTestKey(2), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+
+    ok, err = rds.SRem(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.SRem(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+
+    ok, err = rds.SIsMember(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+}

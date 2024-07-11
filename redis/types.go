@@ -165,6 +165,93 @@ func (rds *RedisDataStructure) HDel(key, field []byte) (bool, error) {
     return exist, nil
 }
 
+func (rds *RedisDataStructure) SAdd(key, member []byte) (bool, error) {
+    metadata, err := rds.findMetadata(key, Set)
+    if err != nil {
+        return false, err
+    }
+
+    sk := &setInternalKey {
+        key: key,
+        version: metadata.version,
+        member: member,
+    }
+
+    if _, err = rds.db.Get(sk.encode()); err == kvdb.ErrKeyNotFound {
+        wb := rds.db.NewWriteBatch(kvdb.DefaultWriteBatchOptions)
+        metadata.size++
+        _ = wb.Put(key, metadata.encode())
+        _ = wb.Put(sk.encode(), nil)
+
+        if err = wb.Commit(); err != nil {
+            return false, err
+        }
+
+        return true, nil
+    }
+
+    return false, nil
+}
+
+func (rds *RedisDataStructure) SIsMember(key, member []byte) (bool, error) {
+    metadata, err := rds.findMetadata(key, Set)
+    if err != nil {
+        return false, err
+    }
+
+    if metadata.size == 0 {
+        return false, nil
+    }
+
+    sk := &setInternalKey {
+        key: key,
+        version: metadata.version,
+        member: member,
+    }
+
+    if _, err = rds.db.Get(sk.encode()); err == kvdb.ErrKeyNotFound {
+        return false, nil
+    }
+
+    if err != nil {
+        return false, err
+    }
+
+    return true, nil
+}
+
+func (rds *RedisDataStructure) SRem(key, member []byte) (bool, error) {
+    metadata, err := rds.findMetadata(key, Set)
+    if err != nil {
+        return false, err
+    }
+
+    if metadata.size == 0 {
+        return false, nil
+    }
+
+    sk := &setInternalKey {
+        key: key,
+        version: metadata.version,
+        member: member,
+    }
+
+    if _, err = rds.db.Get(sk.encode()); err == kvdb.ErrKeyNotFound {
+        return false, nil
+    }
+
+    wb := rds.db.NewWriteBatch(kvdb.DefaultWriteBatchOptions)
+    metadata.size--
+    _ = wb.Put(key, metadata.encode())
+    _ = wb.Delete(sk.encode())
+
+    if err = wb.Commit(); err != nil {
+        return false, err
+    }
+
+    return true, nil
+}
+
 func (rds *RedisDataStructure) findMetadata(key []byte, dataType redisDataType) (*metadata, error) {
     metaBuffer, err := rds.db.Get(key)
     if err != nil && err != kvdb.ErrKeyNotFound {
