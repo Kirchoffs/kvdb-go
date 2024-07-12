@@ -159,3 +159,68 @@ func TestRedisDataStructureSetOperation(t *testing.T) {
     assert.Nil(t, err)
     assert.False(t, ok)
 }
+
+func TestRedisDataStructureListOperation(t *testing.T) {
+    options := kvdb.DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-redis-list-operation-")
+    options.DirPath = dir
+
+    rds, err := NewRedisDataStructure(options)
+    assert.Nil(t, err)
+
+    size, err := rds.LPush(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(1), size)
+
+    size, err = rds.LPush(utils.GetTestKey(1), []byte("value-beta"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(2), size)
+
+    size, err = rds.LPush(utils.GetTestKey(1), []byte("value-gamma"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(3), size)
+
+    size, err = rds.LPush(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(4), size)
+
+    element, err := rds.RPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-alpha"), element)
+
+    element, err = rds.RPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-beta"), element)
+
+    element, err = rds.RPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-gamma"), element)
+
+    size, err = rds.RPush(utils.GetTestKey(1), []byte("value-delta"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(2), size)
+
+    size, err = rds.RPush(utils.GetTestKey(1), []byte("value-epsilon"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(3), size)
+
+    size, err = rds.RPush(utils.GetTestKey(1), []byte("value-zeta"))
+    assert.Nil(t, err)
+    assert.Equal(t, uint32(4), size)
+
+    element, err = rds.LPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-alpha"), element)
+
+    element, err = rds.LPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-delta"), element)
+
+    element, err = rds.LPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-epsilon"), element)
+
+    element, err = rds.LPop(utils.GetTestKey(1))
+    assert.Nil(t, err)
+    assert.Equal(t, []byte("value-zeta"), element)
+}

@@ -252,6 +252,101 @@ func (rds *RedisDataStructure) SRem(key, member []byte) (bool, error) {
     return true, nil
 }
 
+func (rds *RedisDataStructure) LPush(key, element []byte) (uint32, error) {
+    return rds.pushInner(key, element, true)
+}
+
+func (rds *RedisDataStructure) RPush(key, element []byte) (uint32, error) {
+    return rds.pushInner(key, element, false)
+}
+
+func (rds *RedisDataStructure) pushInner(key, element []byte, isLeft bool) (uint32, error) {
+    meta, err := rds.findMetadata(key, List)
+    if err != nil {
+        return 0, err
+    }
+
+    lk := &listInternalKey {
+        key: key,
+        version: meta.version,
+    }
+
+    if isLeft {
+        lk.index = meta.head - 1
+    } else {
+        lk.index = meta.tail
+    }
+
+    wb := rds.db.NewWriteBatch(kvdb.DefaultWriteBatchOptions)
+    meta.size++
+    if isLeft {
+        meta.head--
+    } else {
+        meta.tail++
+    }
+
+    _ = wb.Put(key, meta.encode())
+    _ = wb.Put(lk.encode(), element)
+
+    if err = wb.Commit(); err != nil {
+        return 0, err
+    }
+
+    return meta.size, nil
+}
+
+func (rds *RedisDataStructure) LPop(key []byte) ([]byte, error) {
+    return rds.popInner(key, true)
+}
+
+func (rds *RedisDataStructure) RPop(key []byte) ([]byte, error) {
+    return rds.popInner(key, false)
+}
+
+func (rds *RedisDataStructure) popInner(key []byte, isLeft bool) ([]byte, error) {
+    meta, err := rds.findMetadata(key, List)
+    if err != nil {
+        return nil, err
+    }
+
+    if meta.size == 0 {
+        return nil, nil
+    }
+
+    lk := &listInternalKey {
+        key: key,
+        version: meta.version,
+    }
+
+    if isLeft {
+        lk.index = meta.head
+    } else {
+        lk.index = meta.tail - 1
+    }
+
+    value, err := rds.db.Get(lk.encode())
+    if err != nil {
+        return nil, err
+    }
+
+    wb := rds.db.NewWriteBatch(kvdb.DefaultWriteBatchOptions)
+    meta.size--
+    if isLeft {
+        meta.head++
+    } else {
+        meta.tail--
+    }
+
+    _ = wb.Put(key, meta.encode())
+    _ = wb.Delete(lk.encode())
+
+    if err = wb.Commit(); err != nil {
+        return nil, err
+    }
+
+    return value, nil
+}
+
 func (rds *RedisDataStructure) findMetadata(key []byte, dataType redisDataType) (*metadata, error) {
     metaBuffer, err := rds.db.Get(key)
     if err != nil && err != kvdb.ErrKeyNotFound {

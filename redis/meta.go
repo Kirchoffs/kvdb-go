@@ -116,3 +116,25 @@ func (hk *setInternalKey) encode() []byte {
 
     return buffer
 }
+
+type listInternalKey struct {
+    key []byte
+    version int64
+    index uint64
+}
+
+func (lk *listInternalKey) encode() []byte {
+    var size = len(lk.key) + 8 + 8
+    buffer := make([]byte, size)
+    index := 0
+    
+    copy(buffer[index:], lk.key)
+    index += len(lk.key)
+
+    binary.LittleEndian.PutUint64(buffer[index:], uint64(lk.version))
+    index += 8
+
+    binary.LittleEndian.PutUint64(buffer[index:], lk.index)
+
+    return buffer
+}
