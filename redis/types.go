@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	kvdb "kvdb-go"
+	"kvdb-go/utils"
 	"time"
 )
 
@@ -345,6 +346,85 @@ func (rds *RedisDataStructure) popInner(key []byte, isLeft bool) ([]byte, error)
     }
 
     return value, nil
+}
+
+func (rds *RedisDataStructure) ZAdd(key []byte, score float64, member []byte) (bool, error) {
+    meta, err := rds.findMetadata(key, ZSet)
+    if err != nil {
+        return false, err
+    }
+
+    zk := &zsetInternalKey {
+        key: key,
+        version: meta.version,
+        score: score,
+        member: member,
+    }
+
+    value, err := rds.db.Get(zk.encodeWithoutScore())
+    if err != nil && err != kvdb.ErrKeyNotFound {
+        return false, err
+    }
+
+    var exist = true
+    if err == kvdb.ErrKeyNotFound {
+        exist = false
+    }
+
+    if exist {
+        if score == utils.ByteToFloat64(value) {
+            return false, nil
+        }
+    }
+
+    wb := rds.db.NewWriteBatch(kvdb.DefaultWriteBatchOptions)
+    if !exist {
+        meta.size++
+        _ = wb.Put(key, meta.encode())
+    }
+
+    if exist {
+        oldKey := &zsetInternalKey {
+            key: key,
+            version: meta.version,
+            score: utils.ByteToFloat64(value),
+            member: member,
+        }
+        _ = wb.Delete(oldKey.encodeWithScore())
+    }
+
+    _ = wb.Put(zk.encodeWithScore(), nil)
+    _ = wb.Put(zk.encodeWithoutScore(), utils.Float64ToByte(score))
+
+    if err = wb.Commit(); err != nil {
+        return false, err
+    }
+
+    return !exist, nil
+}
+
+func (rds *RedisDataStructure) ZScore(key, member []byte) (float64, error) {
+    meta, err := rds.findMetadata(key, ZSet)
+    if err != nil {
+        return -1, err
+    }
+
+    if meta.size == 0 {
+        return -1, nil
+    }
+
+    zk := &zsetInternalKey {
+        key: key,
+        version: meta.version,
+        member: member,
+    }
+
+    value, err := rds.db.Get(zk.encodeWithoutScore())
+    if err != nil {
+        return -1, err
+    }
+
+    return utils.ByteToFloat64(value), nil
 }
 
 func (rds *RedisDataStructure) findMetadata(key []byte, dataType redisDataType) (*metadata, error) {

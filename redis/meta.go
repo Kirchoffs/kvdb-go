@@ -2,6 +2,7 @@ package redis
 
 import (
 	"encoding/binary"
+	"kvdb-go/utils"
 	"math"
 )
 
@@ -135,6 +136,52 @@ func (lk *listInternalKey) encode() []byte {
     index += 8
 
     binary.LittleEndian.PutUint64(buffer[index:], lk.index)
+
+    return buffer
+}
+
+type zsetInternalKey struct {
+    key []byte
+    version int64
+    score float64
+    member []byte
+}
+
+func (zk *zsetInternalKey) encodeWithoutScore() []byte {
+    var size = len(zk.key) + 8 + len(zk.member)
+    buffer := make([]byte, size)
+    index := 0
+
+    copy(buffer[index:], zk.key)
+    index += len(zk.key)
+
+    binary.LittleEndian.PutUint64(buffer[index:], uint64(zk.version))
+    index += 8
+
+    copy(buffer[index:], zk.member)
+
+    return buffer
+}
+
+func (zk *zsetInternalKey) encodeWithScore() []byte {
+    scoreBuffer := utils.Float64ToByte(zk.score)
+    var size = len(zk.key) + 8 + len(scoreBuffer) + len(zk.member) + 4
+    buffer := make([]byte, size)
+    index := 0
+    
+    copy(buffer[index:], zk.key)
+    index += len(zk.key)
+
+    binary.LittleEndian.PutUint64(buffer[index:], uint64(zk.version))
+    index += 8
+
+    copy(buffer[index:], scoreBuffer)
+    index += len(scoreBuffer)
+
+    copy(buffer[index:], zk.member)
+    index += len(zk.member)
+
+    binary.LittleEndian.PutUint32(buffer[index:], uint32(len(zk.member)))
 
     return buffer
 }

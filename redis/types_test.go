@@ -224,3 +224,56 @@ func TestRedisDataStructureListOperation(t *testing.T) {
     assert.Nil(t, err)
     assert.Equal(t, []byte("value-zeta"), element)
 }
+
+func TestRedisDataStructureZSetOperation(t *testing.T) {
+    options := kvdb.DefaultOptions
+    dir, _ := os.MkdirTemp("", "kvdb-go-redis-zset-operation-")
+    options.DirPath = dir
+
+    rds, err := NewRedisDataStructure(options)
+    assert.Nil(t, err)
+
+    ok, err := rds.ZAdd(utils.GetTestKey(1), 42, []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 89, []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.False(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 42, []byte("value-beta"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 2038, []byte("value-gamma"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 2038, []byte("value-delta"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 2038, []byte("value-epsilon"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    ok, err = rds.ZAdd(utils.GetTestKey(1), 2.718, []byte("value-zeta"))
+    assert.Nil(t, err)
+    assert.True(t, ok)
+
+    score, err := rds.ZScore(utils.GetTestKey(1), []byte("value-alpha"))
+    assert.Nil(t, err)
+    assert.Equal(t, float64(89), score)
+
+    score, err = rds.ZScore(utils.GetTestKey(1), []byte("value-beta"))
+    assert.Nil(t, err)
+    assert.Equal(t, float64(42), score)
+
+    score, err = rds.ZScore(utils.GetTestKey(1), []byte("value-gamma"))
+    assert.Nil(t, err)
+    assert.Equal(t, float64(2038), score)
+
+    score, err = rds.ZScore(utils.GetTestKey(1), []byte("value-zeta"))
+    assert.Nil(t, err)
+    assert.Equal(t, float64(2.718), score)
+}
