@@ -1,14 +1,14 @@
 package benchmark
 
 import (
-	kvdb "kvdb-go"
-	"kvdb-go/utils"
-	"math/rand"
-	"os"
-	"testing"
-	"time"
+    kvdb "kvdb-go"
+    "kvdb-go/utils"
+    "math/rand"
+    "os"
+    "testing"
+    "time"
 
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 )
 
 var db *kvdb.DB

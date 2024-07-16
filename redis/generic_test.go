@@ -1,12 +1,12 @@
 package redis
 
 import (
-	kvdb "kvdb-go"
-	"kvdb-go/utils"
-	"os"
-	"testing"
+    kvdb "kvdb-go"
+    "kvdb-go/utils"
+    "os"
+    "testing"
 
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestRedisDataStructureDel(t *testing.T) {

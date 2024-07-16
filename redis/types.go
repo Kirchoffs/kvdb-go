@@ -1,11 +1,11 @@
 package redis
 
 import (
-	"encoding/binary"
-	"errors"
-	kvdb "kvdb-go"
-	"kvdb-go/utils"
-	"time"
+    "encoding/binary"
+    "errors"
+    kvdb "kvdb-go"
+    "kvdb-go/utils"
+    "time"
 )
 
 type redisDataType = byte
@@ -33,6 +33,10 @@ func NewRedisDataStructure(options kvdb.Options) (*RedisDataStructure, error) {
     }
 
     return &RedisDataStructure{db: db}, nil
+}
+
+func (rds *RedisDataStructure) Close() error {
+    return rds.db.Close()
 }
 
 func (rds *RedisDataStructure) Set(key []byte, ttl time.Duration, value []byte) error {

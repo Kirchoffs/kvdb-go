@@ -9,6 +9,7 @@
 >> go get github.com/boltdb/bolt
 >> go get github.com/gofrs/flock
 >> go get golang.org/x/exp/mmap
+>> go get github.com/tidwall/redcon
 ```
 
 ```
