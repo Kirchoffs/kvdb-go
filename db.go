@@ -334,6 +334,7 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
     return nil
 }
 
+// This one can be used for single processing
 func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
     db.mutex.Lock()
     defer db.mutex.Unlock()
@@ -341,6 +342,7 @@ func (db *DB) appendLogRecordWithLock(logRecord *data.LogRecord) (*data.LogRecor
     return db.appendLogRecord(logRecord)
 }
 
+// This one can be used for batch processing
 func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
     if db.activeFile == nil {
         if err := db.setActiveDataFile(); err != nil {
@@ -389,6 +391,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
     return pos, nil
 }
 
+// Set up new data file for active file
 func (db *DB) setActiveDataFile() error {
     var initialFileId uint32 = 0
 

@@ -131,6 +131,7 @@ func (wb *WriteBatch) Commit() error {
     return nil
 }
 
+// seqNum + key as byte array
 func logRecordKeyWithSeq(key []byte, seqNum uint64) []byte {
     seq := make([]byte, binary.MaxVarintLen64)
     n := binary.PutUvarint(seq, seqNum)
