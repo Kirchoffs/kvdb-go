@@ -93,6 +93,14 @@ type DataFile struct {
 ### Data
 For this DB, key cannot be empty, value can be empty (intuitive way).
 
+### Merge Process
+- Check if active data file is full
+- Check if it is in the merge process
+- Check if if it reaches the merge threshold
+- Check if the disk space is enough
+- Clean up the merge file before merging
+- Open up a new database instance for merging, the original database instance is still running and accepting requests with new active data file
+
 ## Golang Notes
 ### RWMutex
 ```

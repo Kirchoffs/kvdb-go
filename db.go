@@ -389,6 +389,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
     return pos, nil
 }
 
+// Set up new data file for active file
 func (db *DB) setActiveDataFile() error {
     var initialFileId uint32 = 0
 

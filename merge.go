@@ -27,6 +27,7 @@ func (db *DB) Merge() error {
         return ErrMergeInProgress
     }
 
+    // Check if the amount of data can be merged is greater than the merge trigger ratio
     totalSize, err := utils.DirSize(db.options.DirPath)
     if err != nil {
         db.mutex.Unlock()
@@ -37,6 +38,8 @@ func (db *DB) Merge() error {
         return ErrMergeTriggerRatioNotReached
     }
 
+    // Check if the available disk space is enough for merge
+    // When merging, there are old data (totalSize) and merged data (totalSize - reclaimableSpace)
     availableDiskSize, err := utils.AvailableDiskSpace()
     if err != nil {
         db.mutex.Unlock()
@@ -88,7 +91,7 @@ func (db *DB) Merge() error {
 
     mergeOptions := db.options
     mergeOptions.DirPath = mergePath
-    mergeOptions.SyncWrites = false
+    mergeOptions.SyncWrites = false    // Batch write
     mergeDB, err := Open(mergeOptions)
     if err != nil {
         return err
@@ -112,6 +115,7 @@ func (db *DB) Merge() error {
 
             realKey, _ := parseLogRecordKeyWithSeq(logRecord.Key)
             logRecordPos := db.index.Get(realKey)
+            // Check if it is a valid data
             if logRecordPos != nil && logRecordPos.FileId == dataFile.FileId && logRecordPos.Offset == offset {
                 logRecord.Key = logRecordKeyWithSeq(realKey, nonTransactionSeqNum)
                 mergeLogRecordPos, err := mergeDB.appendLogRecord(logRecord)
@@ -157,8 +161,8 @@ func (db *DB) Merge() error {
 
 // From /path/kvdb to /path/kvdb-merge
 func (db *DB) getMergePath() string {
-    dir := path.Dir(db.options.DirPath)
-    base := path.Base(db.options.DirPath)
+    dir := path.Dir(db.options.DirPath)   // path
+    base := path.Base(db.options.DirPath) // kvdb
 
     return path.Join(dir, base + mergeDirName)
 }
